@@ -1,36 +1,70 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask import Flask, render_template, request
+from io import StringIO
 from Bio import SeqIO
-import io
 
 app = Flask(__name__)
-CORS(app)
 
-@app.route('/')
-def home():
-    return "GeneticCanvas API is running!"
+# 🧬 Home route with FASTA upload
+@app.route("/", methods=["GET", "POST"])
+def index():
+    if request.method == "POST":
+        fasta_file = request.files.get("fasta_file")
+        if not fasta_file or fasta_file.filename == "":
+            return render_template("index.html", error="No file selected")
 
-@app.route('/upload', methods=['POST'])
-def upload_fasta():
-    file = request.files.get('file')
-    if not file:
-        return jsonify({'error': 'No file uploaded'}), 400
+        try:
+            fasta_io = StringIO(fasta_file.read().decode("utf-8"))
+            sequences = list(SeqIO.parse(fasta_io, "fasta"))
+            if not sequences:
+                return render_template("index.html", error="No sequences found")
 
-    try:
-        content = file.read().decode('utf-8')
-        fasta_io = io.StringIO(content)
-        sequences = list(SeqIO.parse(fasta_io, "fasta"))
+            # Use first sequence for demo prediction
+            seq = sequences[0]
+            sequence_id = seq.id
+            input_sequence = str(seq.seq)
+            prediction = "Class A"
+            confidence = 91.4
 
-        response = {
-            'message': 'FASTA file received',
-            'sequence_count': len(sequences),
-            'total_length': sum(len(seq.seq) for seq in sequences),
-            'sample_ids': [seq.id for seq in sequences[:5]]  # Show first 5 IDs
-        }
-        return jsonify(response)
+            return render_template("results.html",
+                                   sequence_id=sequence_id,
+                                   input_sequence=input_sequence,
+                                   prediction=prediction,
+                                   confidence=confidence)
+        except Exception as e:
+            return render_template("index.html", error=f"Error parsing FASTA: {str(e)}")
 
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    return render_template("index.html")
 
-if __name__ == '__main__':
+# 📊 Dashboard route
+@app.route("/dashboard")
+def dashboard():
+    models = ["DNAClassifier-v1", "GeneticNet", "BioSeqAI"]
+    selected_model = models[0]
+    metrics = {
+        "accuracy": "92.5%",
+        "precision": "90.1%",
+        "recall": "89.7%",
+        "f1-score": "89.9%"
+    }
+    roc_curve = {
+        "fpr": "[0.0, 0.1, 0.2]",
+        "tpr": "[0.0, 0.85, 0.95]"
+    }
+    batch_results = [
+        {"id": "seq1", "prediction": "Class A", "confidence": 93.2},
+        {"id": "seq2", "prediction": "Class B", "confidence": 88.7}
+    ]
+    return render_template("dashboard.html",
+                           models=models,
+                           selected_model=selected_model,
+                           metrics=metrics,
+                           roc_curve=roc_curve,
+                           batch_results=batch_results)
+
+# 📁 Results route (optional direct access)
+@app.route("/results")
+def results():
+    return render_template("results.html")
+
+if __name__ == "__main__":
     app.run(debug=True)

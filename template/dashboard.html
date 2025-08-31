@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Model Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .section { margin-bottom: 30px; }
+        .metrics, .results { display: flex; gap: 20px; flex-wrap: wrap; }
+        .card { border: 1px solid #ccc; padding: 15px; border-radius: 8px; width: 200px; }
+        .roc { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Model Dashboard</h1>
+
+    <div class="section">
+        <form method="POST">
+            <label for="model">Select a model:</label>
+            <select name="selected_model" id="model">
+                {% for model in models %}
+                    <option value="{{ model }}" {% if model == selected_model %}selected{% endif %}>{{ model }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">Compare</button>
+        </form>
+    </div>
+
+    {% if metrics %}
+    <div class="section metrics">
+        <h2>Metrics</h2>
+        {% for key, value in metrics.items() %}
+            <div class="card">
+                <strong>{{ key.capitalize() }}</strong><br>
+                {{ value }}
+            </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if roc_curve %}
+    <div class="section roc">
+        <h2>ROC Curve</h2>
+        <p>FPR: {{ roc_curve.fpr }}</p>
+        <p>TPR: {{ roc_curve.tpr }}</p>
+        <!-- You can later replace this with a chart -->
+    </div>
+    {% endif %}
+
+    {% if batch_results %}
+    <div class="section results">
+        <h2>Batch Predictions</h2>
+        {% for result in batch_results %}
+            <div class="card">
+                <strong>ID:</strong> {{ result.id }}<br>
+                <strong>Prediction:</strong> {{ result.prediction }}<br>
+                <strong>Confidence:</strong> {{ result.confidence }}%
+            </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</body>
+</html>
