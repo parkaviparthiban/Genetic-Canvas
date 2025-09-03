@@ -1,70 +1,43 @@
-from flask import Flask, render_template, request
-from io import StringIO
-from Bio import SeqIO
+from flask import Flask, request, jsonify
+import pandas as pd
+from model import load_model, extract_features
 
 app = Flask(__name__)
+model = load_model()  # Load trained model from model.pkl
 
-# 🧬 Home route with FASTA upload
-@app.route("/", methods=["GET", "POST"])
-def index():
-    if request.method == "POST":
-        fasta_file = request.files.get("fasta_file")
-        if not fasta_file or fasta_file.filename == "":
-            return render_template("index.html", error="No file selected")
+@app.route('/')
+def home():
+    return "✅ GeneticCanvas API is live and ready!"
 
-        try:
-            fasta_io = StringIO(fasta_file.read().decode("utf-8"))
-            sequences = list(SeqIO.parse(fasta_io, "fasta"))
-            if not sequences:
-                return render_template("index.html", error="No sequences found")
+@app.route('/predict', methods=['POST'])
+def predict():
+    data = request.get_json()
+    sequence = data.get('sequence')
 
-            # Use first sequence for demo prediction
-            seq = sequences[0]
-            sequence_id = seq.id
-            input_sequence = str(seq.seq)
-            prediction = "Class A"
-            confidence = 91.4
+    if not sequence:
+        return jsonify({'error': 'No DNA sequence provided'}), 400
 
-            return render_template("results.html",
-                                   sequence_id=sequence_id,
-                                   input_sequence=input_sequence,
-                                   prediction=prediction,
-                                   confidence=confidence)
-        except Exception as e:
-            return render_template("index.html", error=f"Error parsing FASTA: {str(e)}")
+    features = extract_features(sequence)
+    prediction = model.predict([features])[0]
 
-    return render_template("index.html")
+    return jsonify({'prediction': prediction})
 
-# 📊 Dashboard route
-@app.route("/dashboard")
-def dashboard():
-    models = ["DNAClassifier-v1", "GeneticNet", "BioSeqAI"]
-    selected_model = models[0]
-    metrics = {
-        "accuracy": "92.5%",
-        "precision": "90.1%",
-        "recall": "89.7%",
-        "f1-score": "89.9%"
-    }
-    roc_curve = {
-        "fpr": "[0.0, 0.1, 0.2]",
-        "tpr": "[0.0, 0.85, 0.95]"
-    }
-    batch_results = [
-        {"id": "seq1", "prediction": "Class A", "confidence": 93.2},
-        {"id": "seq2", "prediction": "Class B", "confidence": 88.7}
-    ]
-    return render_template("dashboard.html",
-                           models=models,
-                           selected_model=selected_model,
-                           metrics=metrics,
-                           roc_curve=roc_curve,
-                           batch_results=batch_results)
+@app.route('/batch_predict', methods=['POST'])
+def batch_predict():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
 
-# 📁 Results route (optional direct access)
-@app.route("/results")
-def results():
-    return render_template("results.html")
+    file = request.files['file']
+    df = pd.read_csv(file)
 
-if __name__ == "__main__":
+    if 'sequence' not in df.columns:
+        return jsonify({'error': 'CSV must contain a "sequence" column'}), 400
+
+    features = df['sequence'].apply(extract_features)
+    feature_df = pd.DataFrame(features.tolist())
+    df['prediction'] = model.predict(feature_df)
+
+    return df[['sequence', 'prediction']].to_json(orient='records')
+
+if __name__ == '__main__':
     app.run(debug=True)

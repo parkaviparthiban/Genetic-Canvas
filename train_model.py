@@ -1,27 +1,22 @@
 import pandas as pd
-import numpy as np
-from sklearn.ensemble import RandomForestClassifier
-import pickle
-from encode import encode_sequences  # assuming you have this function
+import xgboost as xgb
 
-# Step 1: Load labeled data
-df = pd.read_csv('labels.csv')  # columns: sequence,label
+# Dummy training data
+df = pd.DataFrame({
+    "gc_content": [0.4, 0.6, 0.5],
+    "at_ratio": [0.6, 0.4, 0.5],
+    "seq_length": [100, 150, 120],
+    "label": [0, 1, 0]
+})
 
-# Step 2: Encode DNA sequences
-X = encode_sequences(df['sequence'])  # returns 3D array
+# Features and labels
+X = df[["gc_content", "at_ratio", "seq_length"]]
+y = df["label"]
 
-# ✅ Step 3: Flatten encoded sequences
-X = np.array(X).reshape(X.shape[0], -1)  # ← Add this line here
-
-# Step 4: Extract labels
-y = df['label']
-
-# Step 5: Train model
-model = RandomForestClassifier()
+# Train model
+model = xgb.XGBClassifier()
 model.fit(X, y)
 
-# Step 6: Save model
-with open('dna_model.pkl', 'wb') as f:
-    pickle.dump(model, f)
-
-print("✅ Model trained and saved as dna_model.pkl")
+# Save model to file
+model.save_model("model.json")
+print("✅ Model saved as model.json")
