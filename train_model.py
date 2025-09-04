@@ -1,22 +1,24 @@
-import pandas as pd
-import xgboost as xgb
+import pickle
+from sklearn.ensemble import RandomForestClassifier
+import numpy as np
 
-# Dummy training data
-df = pd.DataFrame({
-    "gc_content": [0.4, 0.6, 0.5],
-    "at_ratio": [0.6, 0.4, 0.5],
-    "seq_length": [100, 150, 120],
-    "label": [0, 1, 0]
-})
+# Example training data: [gc_content, at_ratio, total_length]
+X = np.array([
+    [0.5, 0.5, 100],
+    [0.6, 0.4, 120],
+    [0.4, 0.6, 90],
+    [0.7, 0.3, 150]
+])
 
-# Features and labels
-X = df[["gc_content", "at_ratio", "seq_length"]]
-y = df["label"]
+# Example labels (e.g., 0 = non-coding, 1 = coding)
+y = np.array([0, 1, 0, 1])
 
 # Train model
-model = xgb.XGBClassifier()
+model = RandomForestClassifier()
 model.fit(X, y)
 
-# Save model to file
-model.save_model("model.json")
-print("✅ Model saved as model.json")
+# Save to model.pkl
+with open('model.pkl', 'wb') as f:
+    pickle.dump(model, f)
+
+print("✅ Model saved as model.pkl")

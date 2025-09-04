@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: geneticcanvas-api
+    env: python
+    region: singapore  # or change to your preferred region
+    buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    plan: free
+    autoDeploy: true
+    runtime: python-3.10

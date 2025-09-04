@@ -1,8 +1,13 @@
 import pickle
 
 # Load your trained model from disk
+import os
+import pickle
+
 def load_model():
-    with open('model.pkl', 'rb') as f:
+    base_dir = os.path.dirname(__file__)  # Folder where model.py lives
+    model_path = os.path.join(base_dir, 'model.pkl')
+    with open(model_path, 'rb') as f:
         model = pickle.load(f)
     return model
 
