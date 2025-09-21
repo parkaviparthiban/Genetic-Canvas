@@ -1,4 +1,4 @@
-import pickle
+import joblib
 from sklearn.ensemble import RandomForestClassifier
 import numpy as np
 
@@ -10,15 +10,14 @@ X = np.array([
     [0.7, 0.3, 150]
 ])
 
-# Example labels (e.g., 0 = non-coding, 1 = coding)
+# Example labels: 0 = non-coding, 1 = coding
 y = np.array([0, 1, 0, 1])
 
-# Train model
+# Train the model
 model = RandomForestClassifier()
 model.fit(X, y)
 
-# Save to model.pkl
-with open('model.pkl', 'wb') as f:
-    pickle.dump(model, f)
+# Save the model
+joblib.dump(model, 'rf_model.pkl')
 
-print("✅ Model saved as model.pkl")
+print("✅ RandomForest model saved as rf_model.pkl")

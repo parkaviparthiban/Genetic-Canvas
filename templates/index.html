@@ -1,34 +1,172 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>GeneticCanvas – DNA Classifier</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            background-color: #f9f9f9;
-        }
-        h1 {
-            color: #333;
-        }
-        form {
-            margin-top: 20px;
-        }
-        input[type="file"] {
-            margin-bottom: 10px;
-        }
-        .flash {
-            color: red;
-            margin-top: 10px;
-        }
-        .success {
-            color: green;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>GeneticCanvas – DNA Classifier</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #e0f7fa, #fce4ec);
+      background-size: 400% 400%;
+      animation: gradientShift 20s ease infinite;
+      color: #333;
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 60px auto;
+      padding: 40px;
+      background-color: rgba(255, 255, 255, 0.95);
+      border-radius: 16px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+      animation: fadeIn 1.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2.8em;
+      color: #2c3e50;
+      margin-bottom: 10px;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    p {
+      text-align: center;
+      font-size: 1.2em;
+      color: #555;
+      margin-bottom: 30px;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-bottom: 30px;
+    }
+
+    label {
+      font-weight: bold;
+      font-size: 1.1em;
+    }
+
+    select, input[type="file"] {
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+      background-color: #f9f9f9;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 14px 22px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+      transform: scale(1.03);
+    }
+
+    .flash {
+      color: #e74c3c;
+      background-color: #fdecea;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+
+    .results {
+      margin-top: 20px;
+      animation: fadeIn 1s ease;
+    }
+
+    .results h3 {
+      text-align: center;
+      color: #34495e;
+      margin-bottom: 10px;
+    }
+
+    .results ul {
+      list-style: none;
+      padding: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+    }
+
+    .results li {
+      background: #f0f0f0;
+      padding: 14px 18px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      transition: transform 0.3s ease;
+      font-size: 1em;
+    }
+
+    .results li:hover {
+      transform: scale(1.02);
+    }
+
+    .nav-link {
+      text-align: center;
+      margin-top: 30px;
+      font-size: 1em;
+    }
+
+    .nav-link a {
+      color: #007bff;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .nav-link a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 50px;
+      font-size: 0.9em;
+      color: #666;
+    }
+
+    footer a {
+      color: #007bff;
+      text-decoration: none;
+      margin: 0 8px;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
 </head>
 <body>
-    <h1>GeneticCanvas</h1>
+  <div class="container">
+    <h1>🧬 GeneticCanvas Dashboard</h1>
     <p>Upload FASTA files to classify DNA sequences and view model predictions.</p>
 
     {% with messages = get_flashed_messages() %}
@@ -41,10 +179,45 @@
       {% endif %}
     {% endwith %}
 
-    <form method="POST" enctype="multipart/form-data">
-        <label for="fasta_files"><strong>Upload FASTA files</strong></label><br>
-        <input type="file" name="fasta_files" id="fasta_files" multiple><br>
-        <button type="submit">Submit</button>
+    <form method="POST" action="/predict" enctype="multipart/form-data">
+      <label for="model">Select Model:</label>
+      <select name="selected_model" id="model">
+        <option value="RandomForest">RandomForest</option>
+        <option value="XGBoost">XGBoost</option>
+      </select>
+
+      <label for="fasta_files">Upload FASTA file</label>
+      <input type="file" name="fasta_files" id="fasta_files" multiple>
+
+      <button type="submit">Submit</button>
     </form>
+
+    {% if predictions %}
+      <div class="results">
+        <h3>Prediction Results:</h3>
+        <ul>
+          {% for result in predictions %}
+            <li>
+              <strong>{{ result.filename }}</strong><br>
+              Prediction: {{ result.prediction }}<br>
+              Accuracy: {{ result.accuracy }}<br>
+              Confidence: {{ result.confidence }}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <div class="nav-link">
+      <a href="/dashboard">🔍 View Model Dashboard</a>
+    </div>
+
+    <footer>
+      <p>Made by Parkavi |
+        <a href="https://github.com/parkaviparthiban">GitHub</a> |
+        <a href="https://www.linkedin.com/in/parkavi-parthiban">LinkedIn</a>
+      </p>
+    </footer>
+  </div>
 </body>
 </html>

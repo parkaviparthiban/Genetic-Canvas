@@ -1,43 +1,86 @@
-from flask import Flask, request, jsonify
-import pandas as pd
-from model import load_model, extract_features
+from flask import Flask, render_template, request, redirect, flash, session
+import joblib
 
 app = Flask(__name__)
-model = load_model()  # Load trained model from model.pkl
+app.secret_key = 'your-secret-key'
+
+def extract_features(sequence):
+    gc = sequence.count('G') + sequence.count('C')
+    at = sequence.count('A') + sequence.count('T')
+    total = len(sequence)
+    gc_content = gc / total if total else 0
+    at_ratio = at / total if total else 0
+    return [gc_content, at_ratio, total]
 
 @app.route('/')
 def home():
-    return "✅ GeneticCanvas API is live and ready!"
+    return render_template('index.html')
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    data = request.get_json()
-    sequence = data.get('sequence')
+    selected_model = request.form.get('selected_model', 'RandomForest')
+    try:
+        model = joblib.load(f'{selected_model.lower()}_model.pkl')
+    except Exception as e:
+        flash(f"Error loading model: {str(e)}")
+        return redirect('/')
 
-    if not sequence:
-        return jsonify({'error': 'No DNA sequence provided'}), 400
+    if 'fasta_files' not in request.files:
+        flash('No file uploaded.')
+        return redirect('/')
 
-    features = extract_features(sequence)
-    prediction = model.predict([features])[0]
+    files = request.files.getlist('fasta_files')
+    results = []
 
-    return jsonify({'prediction': prediction})
+    for file in files:
+        try:
+            sequence = file.read().decode('utf-8')
+            sequence = ''.join(line for line in sequence.splitlines() if not line.startswith('>')).strip()
+            features = extract_features(sequence)
+            prediction = model.predict([features])[0]
+            results.append({
+                'filename': file.filename,
+                'prediction': int(prediction),
+                'confidence': '95%'  # Placeholder
+            })
+        except Exception as e:
+            results.append({
+                'filename': file.filename,
+                'prediction': f'Error - {str(e)}',
+                'confidence': 'N/A'
+            })
 
-@app.route('/batch_predict', methods=['POST'])
-def batch_predict():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
+    session['batch_results'] = results
+    session['selected_model'] = selected_model
+    flash(f'Prediction completed using {selected_model}.')
+    return render_template('index.html', predictions=results)
 
-    file = request.files['file']
-    df = pd.read_csv(file)
+@app.route('/dashboard', methods=['GET', 'POST'])
+def dashboard():
+    models = ['RandomForest', 'XGBoost']
+    selected_model = request.form.get('selected_model') or session.get('selected_model', 'RandomForest')
+    batch_results = session.get('batch_results', [])
 
-    if 'sequence' not in df.columns:
-        return jsonify({'error': 'CSV must contain a "sequence" column'}), 400
+    correct = sum(1 for r in batch_results if r['prediction'] == 1)
+    total = len(batch_results)
+    accuracy = f"{(correct / total * 100):.2f}%" if total else "N/A"
 
-    features = df['sequence'].apply(extract_features)
-    feature_df = pd.DataFrame(features.tolist())
-    df['prediction'] = model.predict(feature_df)
+    metrics = {
+        'accuracy': accuracy,
+        'precision': 'N/A',
+        'recall': 'N/A'
+    }
+    roc_curve = {
+        'fpr': 'N/A',
+        'tpr': 'N/A'
+    }
 
-    return df[['sequence', 'prediction']].to_json(orient='records')
+    return render_template('dashboard.html',
+                           models=models,
+                           selected_model=selected_model,
+                           metrics=metrics,
+                           roc_curve=roc_curve,
+                           batch_results=batch_results)
 
 if __name__ == '__main__':
     app.run(debug=True)
