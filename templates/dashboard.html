@@ -15,6 +15,7 @@
     .section h3 { color: #34495e; }
     ul { list-style: none; padding: 0; }
     li { background: #ecf0f1; margin: 8px 0; padding: 10px; border-radius: 6px; }
+    .note { font-style: italic; color: #888; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -32,19 +33,27 @@
 
     <div class="section">
       <h3>📈 Model Metrics ({{ selected_model }})</h3>
-      <ul>
-        <li>Accuracy: {{ metrics.accuracy }}</li>
-        <li>Precision: {{ metrics.precision }}</li>
-        <li>Recall: {{ metrics.recall }}</li>
-      </ul>
+      {% if metrics.accuracy != "N/A" %}
+        <ul>
+          <li>Accuracy: {{ metrics.accuracy }}</li>
+          <li>Precision: {{ metrics.precision }}</li>
+          <li>Recall: {{ metrics.recall }}</li>
+        </ul>
+      {% else %}
+        <p class="note">Metrics unavailable — no ground truth labels provided in FASTA files.</p>
+      {% endif %}
     </div>
 
     <div class="section">
       <h3>📊 ROC Curve</h3>
-      <ul>
-        <li>False Positive Rate: {{ roc_curve.fpr }}</li>
-        <li>True Positive Rate: {{ roc_curve.tpr }}</li>
-      </ul>
+      {% if roc_curve.fpr != "N/A" %}
+        <ul>
+          <li>False Positive Rate: {{ roc_curve.fpr }}</li>
+          <li>True Positive Rate: {{ roc_curve.tpr }}</li>
+        </ul>
+      {% else %}
+        <p class="note">ROC curve data not available for unlabeled input.</p>
+      {% endif %}
     </div>
 
     <div class="section">
@@ -52,7 +61,14 @@
       {% if batch_results %}
         <ul>
           {% for result in batch_results %}
-            <li>File: {{ result.filename }} | Prediction: {{ result.prediction }} | Confidence: {{ result.confidence }}</li>
+            <li>
+              File: {{ result.filename }} |
+              Prediction: {{ result.prediction }} |
+              Confidence: {{ result.confidence }}
+              {% if result.label is defined and result.label is not none %}
+                | True Label: {{ result.label }}
+              {% endif %}
+            </li>
           {% endfor %}
         </ul>
       {% else %}
